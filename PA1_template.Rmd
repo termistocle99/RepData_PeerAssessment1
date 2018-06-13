@@ -1,25 +1,160 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible research- Project1"
+output: html_document
 ---
+__Author: TIMITE ALY__
+
+##Setting working directory and data importing__ 
+
+```{r data_importing}
+ library(tidyverse)
+ setwd("C:/Users/Ali TIMITE/Downloads/data science/5-Reproducible research/semaine2/repdata_data_activity")
+ activity <- read.csv("activity.csv", sep=",")
+ 
+```
+
+### Histogram of the total number of steps taken each day
+```{r each_day_hist}
+activity1 <- aggregate(steps~date, activity, sum)
+activity1$date <- as.Date(activity1$date, format="%Y-%m-%d") 
+h <- ggplot(activity1, aes(x=date, y=steps))+geom_histogram(stat = "identity")+ggtitle("Total number of steps taken each day")
+print(h)                            
+
+```
 
 
-## Loading and preprocessing the data
+
+__Mean and median of steps taken each day__
+
+```{r }
+Mean <- aggregate(steps~date, activity, mean)
+Median <- aggregate(steps~date, activity, median)
+
+Mean_eachday <- mean(Mean$steps)
+Median_eachday <- median(Median$steps)
+
+```
+Mean of steps taken each day is __`r Mean_eachday`__, and median is __`r Median_eachday`__
 
 
 
-## What is mean total number of steps taken per day?
+##Time series plot of the average number of steps taken
 
 
+```{r}
+Mean$date <- as.Date(Mean$date, format="%Y-%m-%d")
 
-## What is the average daily activity pattern?
+h2 <- ggplot(Mean, aes(x=date, y=steps))+geom_line(stat = "identity")+ ggtitle("Average number of steps taken(Time series)")
+
+print(h2)
+
+```
 
 
+### 5 minutes interval containing Maximum number of steps
 
-## Imputing missing values
+```{r , eval=TRUE}
+
+activity4 <- aggregate(steps~interval, activity, mean)
+maximum <- filter(activity4, steps == max(steps))
+maximum_time <- maximum[1,1]
+h4 <- ggplot(activity4, aes(x=interval, y=steps))+geom_line(stat = "identity", color="blue" )+ ggtitle("Number of steps per interval")
+print(h4)
+
+```
 
 
+The 5-minute interval that, on average, contains the maximum number of steps is around `r maximum_time`th. minutes  
 
-## Are there differences in activity patterns between weekdays and weekends?
+## Imputing missing data
+
+Let us count the number of missing values
+
+```{r }
+numMissingValues <- length(which(is.na(activity$steps)))
+
+```
+There are `r numMissingValues` missing values
+
+To fill each missing value, we'll replace each one by the mean steps of existing values in activity vector
+
+```{r }
+
+activityDataImputed <- activity
+activityDataImputed$steps[is.na(activityDataImputed$steps)] <- mean(activityDataImputed$steps[!is.na(activityDataImputed$steps)])
+
+```  
+__Histogram of the total number of steps taken each day__
+
+```{r }
+activityDataImputed$date <- as.Date(activityDataImputed$date, format="%Y-%m-%d")
+
+h5 <- ggplot(activityDataImputed, aes(x=date, y=steps))+geom_histogram(stat = "identity") + ggtitle("Number of steps taken each day")
+
+
+print(h5)
+
+```
+
+__For the final comparison, we'll use activityDtatImputed as final vector__
+
+```{r }
+activityfinal <- activityDataImputed
+
+```  
+__Convert activityfinal date variable as date format and transform it as weekdays__
+
+```{r }
+activityfinal$date <- as.Date(activityfinal$date , format="%Y-%m-%d")
+activityfinal$date <- weekdays(activityfinal$date)
+
+```  
+__Subsetting week-end days and ordinary week days__
+
+```{r }
+activity_wkd <- subset(activityfinal, activityfinal$date=="samedi" | activityfinal$date=="dimanche")
+activity_wday <- subset(activityfinal, activityfinal$date!="samedi" & activityfinal$date!="dimanche")
+
+```
+
+__Find everyday mean for each vector__
+
+```{r }
+activity_wday_mean <- aggregate(steps~date, activity_wday, mean)
+activity_wkd_mean <- aggregate(steps~date, activity_wkd, mean)
+
+```  
+
+__Add a type variable for each vector(weekend or weekday)__
+
+```{r}
+
+f_activity_wkd_mean <- cbind(activity_wkd_mean, "type"= rep("weekend",2))
+f_activity_wday_mean <- cbind(activity_wday_mean, "type"= rep("weekday",5))
+
+```
+
+__Binding f_activity_wkd_mean and f_activity_wday_mean__
+
+```{r}
+
+final_week_activity <- rbind(f_activity_wday_mean, f_activity_wkd_mean)
+
+```
+
+__classifying weekdays in order__
+
+```{r}
+
+final_week_activity$date <- factor(final_week_activity$date,levels= c("lundi","mardi","mercredi", "jeudi","vendredi","samedi",'dimanche'))
+final_week_activity <- final_week_activity[order(final_week_activity$date),]
+
+```
+## plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+```{r}
+
+h8 <- ggplot(final_week_activity, aes(date, steps, col= type)) + geom_point(size= 5) + xlab("Date")+ylab("steps")+ggtitle("Weekdays and Weekend steps comparison")
+print(h8)
+
+```
